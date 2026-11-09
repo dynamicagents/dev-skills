@@ -77,9 +77,11 @@ A recursive clone checks out each gitlink instead, which is dev-gates' known-goo
 combination and lags `main` by design, so `--remote-submodules` takes each submodule's
 declared branch, the way the train's own submodules are kept on theirs. `HEAD`, wherever
 this file names it, is then a tip. A train checkout is somebody's and is left as found:
-where its `HEAD` is not what `git -C <dir> ls-remote origin HEAD` names, as on a laptop
-behind `main` or mid-feature, the run reads that repository from a clone of the tip under
-the handoff directory, made as above.
+where its `HEAD` is not what `git -C <dir> ls-remote origin HEAD` names, or
+`git -C <dir> status --porcelain --ignore-submodules=all` lists anything, as on a laptop
+behind `main`, mid-feature or mid-edit, the run reads that repository from a clone of the tip
+under the handoff directory, made as above. Submodules are ignored there because each is
+checked as a repository of its own, and a superproject's sit past their pins by design.
 
 **Name the commit read in every repository**, both workspaces (`git -C <dir> rev-parse
 HEAD`). A permalink cites it, and step 12 reports it. Which `g2a-protocol` each side runs is
