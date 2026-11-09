@@ -469,7 +469,7 @@ test("the audit clones the gates it is reached through", () => {
   const clone = fencedWith(skill, "bash", "dynamicagents/dev-gates");
   assert.ok(clone, "SKILL.md no longer clones dev-gates, so a run reads the train alone");
   assert.ok(
-    /git clone --recurse-submodules https:\/\/github\.com\/dynamicagents\/dev-gates /.test(clone),
+    /git clone --recurse-submodules (?:--[\w-]+ )*https:\/\/github\.com\/dynamicagents\/dev-gates /.test(clone),
     `the dev-gates clone is not an HTTPS clone with its submodules:\n${clone}`
   );
   assert.ok(
@@ -481,6 +481,24 @@ test("the audit clones the gates it is reached through", () => {
   // that drops it leaves the next run nothing to choose a new position against.
   const report = readFileSync(join(AUDIT, "references", "run-report.md"), "utf8");
   assert.ok(/^Positions: /m.test(report), "run-report.md's shape no longer has a Positions: line");
+});
+
+/**
+ * A recursive clone checks out each gitlink, which is dev-gates' known-good combination and
+ * lags `main`, while the gatekeeper deploys its `main`. A run reading the pins reads code
+ * nothing runs, and every `HEAD`, permalink and commit it reports after that looks current.
+ */
+test("every run that clones the gates reads them at their branch tips", () => {
+  for (const dir of [AUDIT, RESTRUCTURE]) {
+    const name = relative(SOURCE, dir);
+    const clone = fencedWith(readFileSync(join(dir, "SKILL.md"), "utf8"), "bash", "dynamicagents/dev-gates");
+    const calls = clone ? callsNaming(clone, "dynamicagents/dev-gates") : [];
+    assert.ok(calls.length > 0, `${name}/SKILL.md no longer clones dev-gates`);
+    assert.ok(
+      calls.every((call) => call.includes("--remote-submodules")),
+      `${name}'s dev-gates clone checks out the pins rather than the branch tips:\n${clone}`
+    );
+  }
 });
 
 /**
