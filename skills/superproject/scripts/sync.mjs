@@ -52,6 +52,7 @@
  */
 
 import { execFileSync } from "node:child_process";
+import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { declared, git, tryGit, currentBranch, recordedCommit } from "./submodule-config.mjs";
 import { healWorkspace, reportHeal } from "./symlinks.mjs";
@@ -85,7 +86,10 @@ export const sync = (root) => {
       results.push([path, "no branch declared in .gitmodules — skipped"]);
       continue;
     }
-    if (!tryGit(["rev-parse", "--git-dir"], dir)) {
+    // `.git` rather than `rev-parse`, which from an uninitialized submodule's empty
+    // directory walks up and answers for the workspace, so everything below would act
+    // on the workspace instead of skipping the submodule.
+    if (!existsSync(join(dir, ".git"))) {
       results.push([path, "not initialized — run `npm run bootstrap`"]);
       continue;
     }

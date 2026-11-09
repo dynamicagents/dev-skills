@@ -82,3 +82,39 @@ export const metadataOf = (text) => {
   }
   return { map, invalid };
 };
+
+/**
+ * What a YAML parser would read differently from `frontmatter`, one sentence each. That reader
+ * turns every value into text, so a list would pass as a description and an unquoted `: ` would
+ * pass as prose while a strict client fails to parse the block. This repository has no
+ * dependencies, so the forms are refused here rather than parsed: a value is a block scalar, a
+ * quoted string or a plain line with nothing YAML would act on. `metadata` is `metadataOf`'s.
+ */
+export const unsupportedForms = (text) => {
+  const body = block(text);
+  if (body === null) return [];
+  const lines = body.split(/\r?\n/);
+  const found = [];
+  lines.forEach((line, at) => {
+    if (line.trim() === "" || /^[ \t#]/.test(line)) return;
+    const top = /^([A-Za-z0-9_-]+):(?:[ \t]+(.*))?$/.exec(line);
+    if (!top) {
+      found.push(`\`${line}\` is not a \`key: value\` line`);
+      return;
+    }
+    const [, key, raw = ""] = top;
+    if (key === "metadata") return;
+    const value = raw.trim();
+    const next = lines[at + 1] ?? "";
+    if (value === "") {
+      if (/^[ \t]+(- |[A-Za-z0-9_-]+:([ \t]|$))/.test(next)) found.push(`${key} is a list or map, not a string`);
+    } else if (/^[[{]/.test(value)) {
+      found.push(`${key} is a flow collection, not a string`);
+    } else if (/^["']/.test(value)) {
+      if (unquote(value) === undefined) found.push(`${key} has a quote that never closes`);
+    } else if (!/^[>|]/.test(value) && (/:([ \t]|$)/.test(value) || /[ \t]#/.test(value))) {
+      found.push(`${key} is a plain value holding \`: \` or \` #\`, which YAML reads differently. Quote it, or use \`>-\``);
+    }
+  });
+  return found;
+};

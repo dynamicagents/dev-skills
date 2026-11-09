@@ -33,7 +33,7 @@
  *   - **A real directory where a link belongs.** Someone copied a skill in
  *     instead of linking it. It works today and silently stops tracking
  *     `.agents/` forever after, which is worse than not working at all.
- *   - **A link that resolves to no `SKILL.md`.** A half-finished install. Claude
+ *   - **A skill with no `SKILL.md`.** A half-finished install. Claude
  *     Code skips such a directory without saying so, so nothing else would ever
  *     report it.
  *   - **A `skills-lock.json` entry with no directory.** The lockfile is the
@@ -133,18 +133,18 @@ for (const name of sources) {
     continue;
   }
 
-  const have = stat ? readlinkSync(link) : null;
-
-  if (have === want) {
-    // The link is right; confirm there is content behind it.
-    if (!existsSync(join(link, "SKILL.md"))) {
-      manual.push(
-        `${name}: the link resolves but \`.agents/skills/${name}/SKILL.md\` is missing. Claude Code skips a ` +
-          `skill directory with no SKILL.md without reporting it. Re-install with \`npx skills add\`.`
-      );
-    }
+  // Before the link is looked at, so the writer cannot make a link to nothing and exit 0.
+  if (!existsSync(join(SOURCE, name, "SKILL.md"))) {
+    manual.push(
+      `${name}: \`.agents/skills/${name}/SKILL.md\` is missing. Claude Code skips a skill directory with no ` +
+        `SKILL.md without reporting it. Re-install with \`npx skills add\`.`
+    );
     continue;
   }
+
+  const have = stat ? readlinkSync(link) : null;
+
+  if (have === want) continue;
 
   const why =
     have === null

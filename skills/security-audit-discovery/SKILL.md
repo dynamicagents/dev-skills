@@ -51,9 +51,17 @@ pin of `g2a-protocol`. So before it forms a hypothesis, the run clones them:
 
 ```bash
 mkdir -m 700 -p /tmp/security-audit-handoff   # the mode is step 10's
+find /tmp/security-audit-handoff -maxdepth 0 -type d -user "$(id -un)" -perm 700 | grep -q . \
+  || { echo "/tmp/security-audit-handoff is not this user's private directory" >&2; exit 1; }
 gates=$(mktemp -d /tmp/security-audit-handoff/dev-gates.XXXXXX)
 git clone --recurse-submodules https://github.com/dynamicagents/dev-gates "$gates"
 ```
+
+`mkdir -p` applies its mode only to a directory it creates, and accepts one that is already
+there or a symlink to one, so on a shared host another user can have made this path first. The
+`find` is what establishes the mode step 10 relies on: it names only a real directory, this
+user's, with no access for anybody else. If it fails, stop and report the path, and write
+nothing there.
 
 The clone goes under the handoff directory because that is the one place this run writes
 (the guardrail block), and it is outside every checkout. It goes in a directory of its own,

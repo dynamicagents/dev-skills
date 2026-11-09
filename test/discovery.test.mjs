@@ -447,6 +447,15 @@ test("the report contract the next run reads is still written down", () => {
 });
 
 /**
+ * `mkdir -p` applies its mode only to a directory it creates, so the mode the audit relies on
+ * for a prepared advisory body is only true once something has checked it.
+ */
+test("the audit verifies its handoff directory is private before writing there", () => {
+  const skill = readFileSync(join(AUDIT, "SKILL.md"), "utf8");
+  assert.match(skill, /find \/tmp\/security-audit-handoff -maxdepth 0 -type d -user "\$\(id -un\)" -perm 700/);
+});
+
+/**
  * The gates are half of every crossing the train is reached through, and nothing checks them
  * out for a run: a session starts in this workspace's checkout and sees its submodules alone.
  * So the clone is the scope, and prose saying "both workspaces" without it is a run that reads

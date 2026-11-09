@@ -11,10 +11,11 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { execFileSync, spawnSync } from "node:child_process";
-import { mkdtempSync, mkdirSync, readdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { lstatSync, mkdtempSync, mkdirSync, readdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { recordedCommit } from "../skills/superproject/scripts/submodule-config.mjs";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const SKILLS = join(root, "skills");
@@ -137,6 +138,73 @@ test("sync leaves a submodule on a branch its remote still has", () => {
     assert.equal(run.status, 0, run.stderr);
     assert.match(run.stdout, /on `feature`, not `main` — left alone/);
     assert.equal(git(["symbolic-ref", "--short", "HEAD"], sub), "feature");
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("sync skips a submodule with no checkout rather than acting on the workspace", () => {
+  const { dir, ws } = workspace();
+  try {
+    // Leaves `sub/` an empty directory, from which git walks up to the workspace.
+    git(["submodule", "deinit", "-f", "sub"], ws);
+
+    const run = node(join(SUPERPROJECT, "sync.mjs"), [], ws);
+    assert.equal(run.status, 0, run.stderr);
+    assert.match(run.stdout, /not initialized/);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("the recorded pointer is what the index holds", () => {
+  const { dir, ws, sub } = workspace();
+  try {
+    const committed = recordedCommit(ws, "sub");
+    assert.equal(committed, git(["rev-parse", "HEAD:sub"], ws));
+
+    onFeature(sub);
+    git(["add", "sub"], ws);
+    assert.equal(recordedCommit(ws, "sub"), git(["rev-parse", "HEAD"], sub), "a staged pointer is the recorded one");
+
+    git(["rm", "--cached", "-q", "sub"], ws);
+    assert.equal(recordedCommit(ws, "sub"), null, "a staged deletion records nothing");
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("submodules --pushed asks the remote, so a deleted branch vouches for nothing", () => {
+  const { dir, ws, sub } = workspace();
+  try {
+    // Relative, because the check refuses a url that is neither that nor HTTPS.
+    git(["config", "-f", ".gitmodules", "submodule.sub.url", "../sub.git"], ws);
+    onFeature(sub);
+    git(["add", "sub"], ws);
+
+    const check = join(SUPERPROJECT, "submodules.mjs");
+    const pushed = node(check, ["--pushed"], ws);
+    assert.equal(pushed.status, 0, pushed.stderr);
+
+    // Deleted on the remote only, so this clone still holds a ref naming the commit.
+    git(["--git-dir", join(dir, "sub.git"), "update-ref", "-d", "refs/heads/feature"], dir);
+    const gone = node(check, ["--pushed"], ws);
+    assert.equal(gone.status, 1);
+    assert.match(gone.stderr, /is on no remote branch/);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("skills will not link a directory with no SKILL.md", () => {
+  const { dir, ws } = workspace();
+  try {
+    mkdirSync(join(ws, ".agents", "skills", "broken"), { recursive: true });
+
+    const run = node(join(SUPERPROJECT, "skills.mjs"), [], ws);
+    assert.equal(run.status, 1);
+    assert.match(run.stderr, /SKILL\.md` is missing/);
+    assert.throws(() => lstatSync(join(ws, ".claude", "skills", "broken")), "a link to nothing was made");
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }

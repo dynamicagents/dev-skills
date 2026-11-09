@@ -110,8 +110,17 @@ for (const [name, { path, url, branch }] of declaredSubs) {
 
   if (pushed) {
     const remote = url ?? "origin";
+    // `branch -r` reads only the remote-tracking refs this clone already holds, so a branch
+    // deleted upstream would still vouch for the commit. Fetched and pruned first, and held
+    // to `origin`, because a ref from any other remote says nothing about what a clone gets.
     try {
-      const found = execFileSync("git", ["branch", "-r", "--contains", recorded], {
+      execFileSync("git", ["fetch", "--quiet", "--prune", "origin"], { cwd: dir, stdio: ["ignore", "pipe", "pipe"] });
+    } catch {
+      problems.push(`${name}: could not fetch ${path}/ from origin, so nothing says ${recorded.slice(0, 8)} is pushed.`);
+      continue;
+    }
+    try {
+      const found = execFileSync("git", ["branch", "-r", "--contains", recorded, "--list", "origin/*"], {
         cwd: dir,
         encoding: "utf8",
         stdio: ["ignore", "pipe", "pipe"]

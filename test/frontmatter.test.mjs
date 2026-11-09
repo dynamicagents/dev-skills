@@ -15,7 +15,7 @@ import assert from "node:assert/strict";
 import { readFileSync, existsSync } from "node:fs";
 import { join, dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { frontmatter, metadataOf, skillNames } from "./frontmatter.mjs";
+import { frontmatter, metadataOf, skillNames, unsupportedForms } from "./frontmatter.mjs";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const SOURCE = join(root, "skills");
@@ -78,6 +78,25 @@ test("the metadata reader takes one level of string values and flags anything de
   assert.deepEqual(md('metadata:\n  author: someone\n  version: "1.0"').map, { author: "someone", version: "1.0" });
   assert.deepEqual(md("metadata:\n    four: spaces\n    still: one level").invalid, []);
   assert.deepEqual(md("metadata:\n  nested:\n    key: value").invalid, ["nested:", "key: value"]);
+});
+
+test("the frontmatter reader refuses what it would otherwise read as text", () => {
+  const forms = (body) => unsupportedForms(`---\n${body}\n---\n`);
+
+  assert.deepEqual(forms("name: x\ndescription: >-\n  folded: text is fine\nmetadata:\n  a: b"), []);
+  assert.deepEqual(forms('description: "a quoted: colon is fine"'), []);
+  assert.match(forms("description: [one, two]")[0], /flow collection/);
+  assert.match(forms("description:\n  - one")[0], /list or map/);
+  assert.match(forms("description: a plain: colon")[0], /plain value/);
+  assert.match(forms("description: a # comment")[0], /plain value/);
+  assert.match(forms(`description: "unterminated`)[0], /never closes/);
+  assert.match(forms("stray line")[0], /not a `key: value` line/);
+});
+
+test("every skill's frontmatter is in a form the reader can vouch for", () => {
+  for (const name of skills) {
+    assert.deepEqual(unsupportedForms(read(name)), [], `${name}: frontmatter a strict YAML parser reads differently`);
+  }
 });
 
 test("every skill has a SKILL.md whose name is its directory", () => {

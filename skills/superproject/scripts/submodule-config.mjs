@@ -36,9 +36,21 @@ export const declared = (root) => {
   return new Map([...out].sort(([a], [b]) => a.localeCompare(b)));
 };
 
-/** The commit this repo records for a submodule, read from the index so a dirty tree cannot change the answer. */
-export const recordedCommit = (root, path) =>
-  tryGit(["rev-parse", `HEAD:${path}`], root) ?? tryGit(["ls-files", "-s", path], root)?.split(/\s+/)[1] ?? null;
+/**
+ * The commit this repo records for a submodule: its stage-0 gitlink in the index, which is
+ * what the next commit will record and what a dirty working tree cannot change. `HEAD:<path>`
+ * would answer for the last commit, so a staged pointer would go unchecked. Null when the
+ * index has no settled gitlink at that path.
+ */
+export const recordedCommit = (root, path) => {
+  const listing = tryGit(["ls-files", "-s", "--", `:(literal)${path}`], root) ?? "";
+  for (const line of listing.split("\n")) {
+    const [meta, entry] = line.split("\t");
+    const [mode, object, stage] = (meta ?? "").split(" ");
+    if (entry === path && mode === "160000" && stage === "0") return object;
+  }
+  return null;
+};
 
 /** The branch a submodule is on, or null when its HEAD is detached. */
 export const currentBranch = (dir) => {
