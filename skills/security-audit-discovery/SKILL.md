@@ -54,7 +54,7 @@ mkdir -m 700 -p /tmp/security-audit-handoff   # the mode is step 10's
 find /tmp/security-audit-handoff -maxdepth 0 -type d -user "$(id -un)" -perm 700 | grep -q . \
   || { echo "/tmp/security-audit-handoff is not this user's private directory" >&2; exit 1; }
 gates=$(mktemp -d /tmp/security-audit-handoff/dev-gates.XXXXXX)
-git clone --recurse-submodules https://github.com/dynamicagents/dev-gates "$gates"
+git clone --recurse-submodules --remote-submodules https://github.com/dynamicagents/dev-gates "$gates"
 ```
 
 `mkdir -p` applies its mode only to a directory it creates, and accepts one that is already
@@ -71,9 +71,22 @@ and reads the gates from there. A hop on the gate's side of a
 crossing is then read like any other, never assumed or left as the step a finding could
 not walk.
 
+**Every repository is read at its default branch's tip**, because that is what ships: the
+gatekeeper and starter deploy each green push to `main`, and the libraries release from it.
+A recursive clone checks out each gitlink instead, which is dev-gates' known-good
+combination and lags `main` by design, so `--remote-submodules` takes each submodule's
+declared branch, the way the train's own submodules are kept on theirs. `HEAD`, wherever
+this file names it, is then a tip. A train checkout is somebody's and is left as found:
+where its `HEAD` is not what `git -C <dir> ls-remote origin HEAD` names, or
+`git -C <dir> status --porcelain --ignore-submodules=all` lists anything, as on a laptop
+behind `main`, mid-feature or mid-edit, the run reads that repository from a clone of the tip
+under the handoff directory, made as above. Submodules are ignored there because each is
+checked as a repository of its own, and a superproject's sit past their pins by design.
+
 **Name the commit read in every repository**, both workspaces (`git -C <dir> rev-parse
-HEAD`). A permalink cites it, and step 12 reports it. `g2a-protocol` is pinned on each side
-independently, so which version each side installs is a seam of its own (step 4).
+HEAD`). A permalink cites it, and step 12 reports it. Which `g2a-protocol` each side runs is
+the version its lockfile names, never a submodule's checkout, so the version seam (step 4)
+is read off the lockfiles, as the next paragraph has it.
 
 **Libraries are read at the version the lockfile names.** A checkout's `node_modules` may
 be the workspace's install still running, one that failed, or one copied in from

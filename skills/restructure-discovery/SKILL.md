@@ -56,13 +56,14 @@ rather than reasoning about a repository it has not read:
 ```bash
 mkdir -p /tmp/restructure-discovery
 gates=$(mktemp -d /tmp/restructure-discovery/dev-gates.XXXXXX)
-git clone --recurse-submodules https://github.com/dynamicagents/dev-gates "$gates"
+git clone --recurse-submodules --remote-submodules https://github.com/dynamicagents/dev-gates "$gates"
 ```
 
 The clone goes under that directory because it is the one place this run writes (the guardrail
 block), and it is outside every checkout. It goes in a directory of its own, because the
 directory outlives a run and `git clone` refuses one that is not empty. The run keeps the path
-`mktemp` printed.
+`mktemp` printed. `--remote-submodules` puts each submodule at its declared branch's tip rather
+than at dev-gates' pin, which lags `main` by design while the gatekeeper deploys `main`.
 
 **Name the commit read in every repository**, both workspaces (`git -C <dir> rev-parse HEAD`).
 A permalink cites it, the report's `Read at:` line carries it, and a proposal about a boundary
