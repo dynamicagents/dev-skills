@@ -17,7 +17,9 @@ own `AGENTS.md` says which repositories those are and how they relate. This skil
 every workspace does the same way, and the scripts that do it.
 
 The scripts run from the workspace root, which is where `npm run` runs them, and each takes
-`--help`. A workspace's `package.json` points its scripts here:
+`--help`. The `scripts/` paths here are relative to this skill's directory, so run directly from
+a workspace root they are `.agents/skills/superproject/scripts/<name>.mjs`. A workspace's
+`package.json` points its scripts here:
 
 | npm script | runs | what it does |
 | --- | --- | --- |

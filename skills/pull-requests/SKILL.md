@@ -15,6 +15,9 @@ Copilot reviews the pull requests in every dynamicagents repository. Each reposi
 `gh`, signed in as whoever runs them. Each script takes `--help`, and a repository is
 `owner/name` or a bare name in `dynamicagents`.
 
+The `scripts/` paths below are relative to this skill's directory, which from a workspace root
+is `.agents/skills/pull-requests/`. The scripts do not depend on where they are run from.
+
 ## Every Copilot review comment ends resolved
 
 A PR is not ready to hand over while one of its threads is open.
