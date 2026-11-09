@@ -1,0 +1,14 @@
+{
+  "name": "dev-skills",
+  "private": true,
+  "type": "module",
+  "description": "The skills, and the scripts inside them, that the Dynamic Agents workspaces install.",
+  "license": "Apache-2.0",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "test": "node --test test/*.test.mjs",
+    "check": "npm test"
+  }
+}
