@@ -40,7 +40,8 @@ frontmatter to the spec (`test/frontmatter.test.mjs`):
   it.
 
 **A script is a command an agent runs, not a library.** It goes in the skill's `scripts/`, is
-named in its `SKILL.md`, and:
+named in its `SKILL.md` by a path relative to the skill, as the spec has it, with a sentence
+saying what that is relative to, and:
 
 - runs on Node with `node:` builtins only, so a workspace installs nothing to run it;
 - answers `--help` and never prompts;
